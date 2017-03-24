@@ -39,8 +39,9 @@ void setup() {
 }
 
 void loop() {
-  
-    if (Serial.available() > 2) {
+      delay(1000);
+      
+    if (Serial.available() >= 2) {
       // read the incoming byte:
       byte incomingByte = Serial.read();
 
@@ -65,12 +66,17 @@ void loop() {
       }
       if(AC_1 <= incomingByte && incomingByte <= AC_4) {
         digitalWrite(incomingByte, Serial.read());
+        Serial.println("turned on AC");
       }
       if(DC_1 <= incomingByte && incomingByte <= DC_4) {
         digitalWrite(incomingByte, Serial.read());
+        Serial.println("turned on DC");
+      }
+      //lets clear the buffer
+      while(Serial.available()){
+        Serial.read();
       }
     }
-    delay(1000);
 }
 
 

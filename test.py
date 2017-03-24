@@ -2,14 +2,15 @@ import serial
 import time
 import json
 
-pollSensorsCode = bytes('00','ASCII')
-pollInterval = 60,000 #time between sensor and reaction intervals in ms
+pollSensorsCode = b'00'
+pollInterval = 5 #time between sensor and reaction intervals in seconds
+numSensors = 6
 
 
 '''config for communication'''
 arduinoSerialData = serial.Serial('/dev/tty.usbmodem1411',9600)
-arduinoSerialData.flushOutput()
-arduinoSerialData.flushInput()
+# arduinoSerialData.flushOutput()
+# arduinoSerialData.flushInput()
 
 '''Current Time'''
 startTime = time.time()
@@ -17,6 +18,61 @@ startTime = time.time()
 
 '''Read climate recipe'''
 #TODO parameterize the file we use.
+
+def executeParameters(pattern):
+    patternExecutionTime = pattern['hours'] * 60 * 60 * 1000 # hours -> minutes -> seconds -> ms
+    while (startTime + patternExecutionTime) > time.time():
+        currentTime = time.time()
+        data = pollSensors()
+        print(data)
+
+        if(data['lux'] < pattern['light_illuminance']): #this may require toggleing
+            #TODO turn on lights
+            time.sleep(1) #debug remove
+
+        if(data['airTemp'] < pattern['air_temperature']):
+            #TODO turn on the heater
+            #TODO implement tolerence range values (So it doesn't click on and off quickly)
+            #TODO add a warning of somekind if it goes over the temperature + tolerance level
+            time.sleep(1) #debug remove
+
+        # if(data['humidity'] < pattern['humidity']):
+        #     #TODO turn on the sensor
+        #     #TODO implement tolerence range values
+        #     #TODO check if this is the correct name in patterns
+        #     time.sleep(1) #debug remove
+
+        while currentTime + pollInterval > time.time(): #lets only poll the sensors every once in a while
+            time.sleep(1)
+
+
+
+def pollSensors():
+    arduinoSerialData.write(b'00');
+    time.sleep(5) # wait 5 seconds for the sensors to collect data
+    arduinoSerialData.write(b'00');
+    time.sleep(5) # wait 5 seconds for the sensors to collect data
+    data = {} 
+    while arduinoSerialData.inWaiting():
+        myData = arduinoSerialData.readline().decode('utf-8')
+        # print(myData) #TODO debug
+        lines = myData.split(':')
+        #This is gross 🤢 😓
+        if(lines[0].find('Water Temp') != -1):
+            data['waterTemp'] = float(lines[-1])
+        elif(lines[0].find('lux') != -1):
+            data['lux'] = float(lines[-1])
+        elif(lines[0].find('pH') != -1):
+            data['pH'] = float(lines[-1])
+        elif(lines[0].find('Humidity') != -1):
+            data['humidity'] = float(lines[-1])
+        elif(lines[0].find('Air Temp') != -1):
+            data['airTemp'] = float(lines[-1])  
+        elif(lines[0].find('CO2') != -1):
+            data['CO2'] = float(lines[-1])
+
+        if len(data) == numSensors:
+            return data
 
 with open('general_greens.json') as data_file:    
     data = json.load(data_file)
@@ -36,59 +92,10 @@ with open('general_greens.json') as data_file:
 
         executeParameters(day)
         executeParameters(night)
+        for i in range(0, patternDays):
+            print('days of cycle ' + str(currentOperation) + ' have these parameters: ' + str(day))
+            print('nights of cycle ' + str(currentOperation) + ' have these parameters: ' + str(night))
 
-        print('days of cycle ' + str(currentOperation) + ' have these parameters: ' + str(day))
-        print('nights of cycle ' + str(currentOperation) + ' have these parameters: ' + str(night))
-
-
-def executeParameters(pattern):
-    patternExecutionTime = pattern['hours'] * 60 * 60 * 1000 # hours -> minutes -> seconds -> ms
-    while (startTime + patternExecutionTime) > time.time():
-        currentTime = time.time()
-        data = pollSensors()
-
-        if(data['lux'] < pattern['light_illuminance']): #this may require toggleing
-            #TODO turn on lights
-            time.sleep(1) #debug remove
-
-        if(data['airTemp'] < pattern['air_temperature']):
-            #TODO turn on the heater
-            #TODO implement tolerence range values (So it doesn't click on and off quickly)
-            time.sleep(1) #debug remove
-
-        while currentTime + pollInterval > time.time(): #lets only poll the sensors every once in a while
-            time.sleep(1)
-
-
-
-
-
-def pollSensors():
-    arduinoSerialData.write(pollSensorsCode);
-    time.sleep(5) # wait 5 seconds for the sensors to collect data
-    data = {} 
-    if(arduinoSerialData.inWaiting()):
-        myData = arduinoSerialData.readline().decode('utf-8')
-        print(myData) #TODO debug
-        lines = myData.split(':')
-        #This is gross 🤢 😓
-        if(line[0].find('water temperature') != -1):
-            data['waterTemp'] = float(lines[-1])
-        elif(line[0].find('lux') != -1):
-            data['lux'] = float(lines[-1])
-        elif(line[0].find('pH') != -1):
-            data['pH'] = float(lines[-1])
-        elif(line[0].find('Humidity') != -1):
-            data['humidity'] = float(lines[-1])
-        elif(line[0].find('Air Temperature') != -1):
-            data['airTemp'] = float(lines[-1])  
-        elif(line[0].find('CO2') != -1):
-            data['CO2'] = float(lines[-1])            
-
-        print(float(lines[-1])) #TODO debug
-    else:
-        print("something went wrong in poll sensors")
-    return data
 
 '''
 ---------Begin Sensor Data---------

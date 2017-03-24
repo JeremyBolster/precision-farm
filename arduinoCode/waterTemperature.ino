@@ -40,7 +40,7 @@ String readWaterTemp() {
     //// default is 12 bit resolution, 750 ms conversion time
   }
   celsius = (float)raw / 16.0;
-  String output = String("Water temperature (°C): " + String(celsius));
+  String output = String("Water Temperature (°C): " + String(celsius));
   return output;
 //  Serial.print("Water temperature (°C): ");
 //  Serial.println(celsius);
