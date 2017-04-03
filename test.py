@@ -1,6 +1,9 @@
 import serial 
 import time
 import json
+from subprocess import call
+import datetime
+import glob
 
 pollSensorsCode = b'00'
 pollInterval = 5 #time between sensor and reaction intervals in seconds
@@ -8,50 +11,67 @@ numSensors = 6
 
 
 '''config for communication'''
-arduinoSerialData = serial.Serial('/dev/tty.usbmodem1411',9600)
-# arduinoSerialData.flushOutput()
-# arduinoSerialData.flushInput()
+arduinoSerialData = serial.Serial(glob.glob("/dev/tty.usbmodem*")[0],9600) #TODO this is broken if we want multiple farms on one raspberry pi
 
 '''Current Time'''
 startTime = time.time()
 
-
-'''Read climate recipe'''
-#TODO parameterize the file we use.
-
 def executeParameters(pattern):
+    '''test'''
+    arduinoSerialData.write(bytes(chr(0x06),'ASCII'));
+    arduinoSerialData.write(bytes(chr(0x01),'ASCII'));
+    time.sleep(5)
+    arduinoSerialData.write(bytes(chr(0x06),'ASCII'));
+    arduinoSerialData.write(bytes(chr(0x01),'ASCII'));
+    time.sleep(10)
+    arduinoSerialData.write(bytes(chr(0x07),'ASCII'));
+    arduinoSerialData.write(bytes(chr(0x01),'ASCII'));
+    '''end test'''
+
     patternExecutionTime = pattern['hours'] * 60 * 60 * 1000 # hours -> minutes -> seconds -> ms
     while (startTime + patternExecutionTime) > time.time():
+
+        imageFileName = datetime.datetime.now().strftime("%H:%M:%S:%m:%d:%Y") + '.jpeg'
+        call(["fswebcam", "-r 1280x720", imageFileName])
+
         currentTime = time.time()
         data = pollSensors()
         print(data)
+        try:
+            if(data['lux'] < pattern['light_illuminance']): #this may require toggleing
+                #TODO turn on lights
+                pass
+        except KeyError:
+            pass
 
-        if(data['lux'] < pattern['light_illuminance']): #this may require toggleing
-            #TODO turn on lights
-            time.sleep(1) #debug remove
+        try:
+            if(data['airTemp'] < pattern['air_temperature']):
+           #      #TODO turn on the heater
+           #      #TODO implement tolerence range values (So it doesn't click on and off quickly)
+           #      #TODO add a warning of somekind if it goes over the temperature + tolerance level
+                pass
+        except KeyError:
+            pass
 
-        if(data['airTemp'] < pattern['air_temperature']):
-            #TODO turn on the heater
-            #TODO implement tolerence range values (So it doesn't click on and off quickly)
-            #TODO add a warning of somekind if it goes over the temperature + tolerance level
-            time.sleep(1) #debug remove
-
-        # if(data['humidity'] < pattern['humidity']):
+        try:
+            if(data['humidity'] < pattern['humidity']):
         #     #TODO turn on the sensor
         #     #TODO implement tolerence range values
         #     #TODO check if this is the correct name in patterns
-        #     time.sleep(1) #debug remove
+                pass
+        except KeyError:
+            pass
 
         while currentTime + pollInterval > time.time(): #lets only poll the sensors every once in a while
             time.sleep(1)
 
 
 
-def pollSensors():
+def pollSensors(arduinoSerialData):
     arduinoSerialData.write(b'00');
-    time.sleep(5) # wait 5 seconds for the sensors to collect data
+    time.sleep(1) # wait 1 second for the arduino to register
     arduinoSerialData.write(b'00');
-    time.sleep(5) # wait 5 seconds for the sensors to collect data
+    time.sleep(10) # wait 10 seconds for the sensors to collect data
     data = {} 
     while arduinoSerialData.inWaiting():
         myData = arduinoSerialData.readline().decode('utf-8')
@@ -74,6 +94,9 @@ def pollSensors():
         if len(data) == numSensors:
             return data
 
+
+'''Read climate recipe'''
+#TODO parameterize the file we use.
 with open('general_greens.json') as data_file:    
     data = json.load(data_file)
     print()
@@ -114,17 +137,3 @@ CO2 (ppm): -1
 
 ----------End Sensor Data----------
 '''
-
-'''test 2 -- communication and control --'''
-# while True:
-#   if(arduinoSerialData.inWaiting()):
-#       myData = arduinoSerialData.readline().decode('utf-8')
-#       print(myData)
-#       lines = myData.split(':')
-#       for i in range(0,len(lines)):
-#           try:
-#               print(float(lines[i]))
-#           except ValueError:
-#               continue
-#   else:
-#       arduinoSerialData.write(bytes(input(),'ASCII'))
