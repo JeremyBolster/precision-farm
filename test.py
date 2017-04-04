@@ -11,7 +11,9 @@ numSensors = 6
 
 
 '''config for communication'''
-arduinoSerialData = serial.Serial(glob.glob("/dev/tty.usbmodem*")[0],9600) #TODO this is broken if we want multiple farms on one raspberry pi
+arduinoSerialData = serial.Serial(glob.glob("/dev/tty.usbmodem*")[0],9600) 
+#TODO this is broken if we want multiple farms on one raspberry pi
+#also broken if an arduino is not connected
 
 '''Current Time'''
 startTime = time.time()

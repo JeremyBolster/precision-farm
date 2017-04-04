@@ -31,5 +31,8 @@
 * Implement an alerting system to email/text if the pH (or whatever) goes wacky
 * edit the python logic parameters from the Grafana interface
 * Authentication levels for grafana (anyone should be able to view, only some should be able to edit settings)
+* Modify the arduio comms to use CmdMessenger, python to use PyCmdMessenger
+
+
 
 
