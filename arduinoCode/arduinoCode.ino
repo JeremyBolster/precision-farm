@@ -30,6 +30,10 @@ void setup() {
     for(int i=2; i < 10; i++) {
       pinMode(i, OUTPUT);
     }
+    digitalWrite(AC_1, HIGH);
+    digitalWrite(AC_2, HIGH);
+    digitalWrite(AC_3, HIGH);
+    digitalWrite(AC_4, HIGH);
 
     pinMode(WATER_TEMP_PIN, INPUT);
     pinMode(LUX_PIN, INPUT);

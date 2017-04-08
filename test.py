@@ -5,6 +5,8 @@ from subprocess import call
 import datetime
 import glob
 
+
+
 pollSensorsCode = b'00'
 pollInterval = 5 #time between sensor and reaction intervals in seconds
 numSensors = 6
@@ -19,16 +21,6 @@ arduinoSerialData = serial.Serial(glob.glob("/dev/tty.usbmodem*")[0],9600)
 startTime = time.time()
 
 def executeParameters(pattern):
-    '''test'''
-    arduinoSerialData.write(bytes(chr(0x06),'ASCII'));
-    arduinoSerialData.write(bytes(chr(0x01),'ASCII'));
-    time.sleep(5)
-    arduinoSerialData.write(bytes(chr(0x06),'ASCII'));
-    arduinoSerialData.write(bytes(chr(0x01),'ASCII'));
-    time.sleep(10)
-    arduinoSerialData.write(bytes(chr(0x07),'ASCII'));
-    arduinoSerialData.write(bytes(chr(0x01),'ASCII'));
-    '''end test'''
 
     patternExecutionTime = pattern['hours'] * 60 * 60 * 1000 # hours -> minutes -> seconds -> ms
     while (startTime + patternExecutionTime) > time.time():
@@ -37,7 +29,7 @@ def executeParameters(pattern):
         call(["fswebcam", "-r 1280x720", imageFileName])
 
         currentTime = time.time()
-        data = pollSensors()
+        data = pollSensors(arduinoSerialData)
         print(data)
         try:
             if(data['lux'] < pattern['light_illuminance']): #this may require toggleing
@@ -66,35 +58,6 @@ def executeParameters(pattern):
 
         while currentTime + pollInterval > time.time(): #lets only poll the sensors every once in a while
             time.sleep(1)
-
-
-
-def pollSensors(arduinoSerialData):
-    arduinoSerialData.write(b'00');
-    time.sleep(1) # wait 1 second for the arduino to register
-    arduinoSerialData.write(b'00');
-    time.sleep(10) # wait 10 seconds for the sensors to collect data
-    data = {} 
-    while arduinoSerialData.inWaiting():
-        myData = arduinoSerialData.readline().decode('utf-8')
-        # print(myData) #TODO debug
-        lines = myData.split(':')
-        #This is gross 🤢 😓
-        if(lines[0].find('Water Temp') != -1):
-            data['waterTemp'] = float(lines[-1])
-        elif(lines[0].find('lux') != -1):
-            data['lux'] = float(lines[-1])
-        elif(lines[0].find('pH') != -1):
-            data['pH'] = float(lines[-1])
-        elif(lines[0].find('Humidity') != -1):
-            data['humidity'] = float(lines[-1])
-        elif(lines[0].find('Air Temp') != -1):
-            data['airTemp'] = float(lines[-1])  
-        elif(lines[0].find('CO2') != -1):
-            data['CO2'] = float(lines[-1])
-
-        if len(data) == numSensors:
-            return data
 
 
 '''Read climate recipe'''

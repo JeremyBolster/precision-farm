@@ -5,7 +5,7 @@
 * <strike>Solder extra power wires</strike>
 * <strike>Make sure all wires are plugged in correctly</strike>
 * <strike>Logic in python to control the environment based on the climate recipe</strike>
-* Mount everything on the box
+* <strike>Mount everything on the box</strike>
 
 ##By Semester's End
 * Averaging filter in python for more accuracy
