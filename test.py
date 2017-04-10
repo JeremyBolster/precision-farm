@@ -1,4 +1,3 @@
-import serial 
 import time
 import json
 from subprocess import call
@@ -6,13 +5,8 @@ import datetime
 import glob
 import ArduinoMessenger
 
-pollSensorsCode = b'00'
-pollInterval = 5 #time between sensor and reaction intervals in seconds
-numSensors = 6
-
-
 '''config for communication'''
-arduinoSerialData = serial.Serial(glob.glob("/dev/tty.usbmodem*")[0],9600) 
+arduinoSerialData = glob.glob("/dev/tty.usbmodem*")[0]
 #TODO this is broken if we want multiple farms on one raspberry pi
 #also broken if an arduino is not connected
 
@@ -21,7 +15,9 @@ startTime = time.time()
 
 def executeParameters(pattern):
 
-    arduinoCmds = ArduinoMessenger(arduinoSerialData)
+    pollInterval = 5 #time between sensor and reaction intervals in seconds
+
+    arduinoCmds = ArduinoMessenger.ArduinoMessenger(arduinoSerialData)
 
     patternExecutionTime = pattern['hours'] * 60 * 60 * 1000 # hours -> minutes -> seconds -> ms
     while (startTime + patternExecutionTime) > time.time():
@@ -35,26 +31,29 @@ def executeParameters(pattern):
         print(data)
         try:
             if(data['lux'] < pattern['light_illuminance']): #this may require toggleing
-                #TODO turn on lights
-                pass
+                arduinoCmds.toggleDevice("lights", "HIGH")
+            else:
+                arduinoCmds.toggleDevice("lights", "LOW") #TODO this is gonna cause blinking 🤢 😓
         except KeyError:
             pass
 
         try:
-            if(data['airTemp'] < pattern['air_temperature']):
-           #      #TODO turn on the heater
+            if(data['air_temp'] < pattern['air_temperature']):
+                arduinoCmds.toggleDevice("heater", "HIGH")
            #      #TODO implement tolerence range values (So it doesn't click on and off quickly)
            #      #TODO add a warning of somekind if it goes over the temperature + tolerance level
-                pass
+            else:
+                arduinoCmds.toggleDevice("heater", "LOW")
         except KeyError:
             pass
 
         try:
             if(data['humidity'] < pattern['humidity']):
-        #     #TODO turn on the sensor
+                arduinoCmds.toggleDevice("humdifier","HIGH")
         #     #TODO implement tolerence range values
         #     #TODO check if this is the correct name in patterns
-                pass
+            else:
+                arduinoCmds.toggleDevice("humidifier", "LOW")
         except KeyError:
             pass
 
@@ -62,41 +61,10 @@ def executeParameters(pattern):
             time.sleep(1)
 
 
-def pollSensors(arduinoSerialData):
-    arduinoSerialData.write(b'00');
-    time.sleep(1) # wait 1 second for the arduino to register
-    arduinoSerialData.write(b'00');
-    time.sleep(10) # wait 10 seconds for the sensors to collect data
-    data = {} 
-    while arduinoSerialData.inWaiting():
-        myData = arduinoSerialData.readline().decode('utf-8')
-        # print(myData) #TODO debug
-        lines = myData.split(':')
-        #This is gross 🤢 😓
-        if(lines[0].find('Water Temp') != -1):
-            data['waterTemp'] = float(lines[-1])
-        elif(lines[0].find('lux') != -1):
-            data['lux'] = float(lines[-1])
-        elif(lines[0].find('pH') != -1):
-            data['pH'] = float(lines[-1])
-        elif(lines[0].find('Humidity') != -1):
-            data['humidity'] = float(lines[-1])
-        elif(lines[0].find('Air Temp') != -1):
-            data['airTemp'] = float(lines[-1])  
-        elif(lines[0].find('CO2') != -1):
-            data['CO2'] = float(lines[-1])
-
-        if len(data) == numSensors:
-            return data
-
-
 '''Read climate recipe'''
-#TODO parameterize the file we use.
-with open(input("Please specifie the climate recipe")) as data_file:    
+with open(input("Please specify the climate recipe\n")) as data_file:    
     data = json.load(data_file)
-    print()
-    print('The current climate recipe is: '+data['_id'])
-    print()
+    print('The current climate recipe is: '+data['_id']+"\n")
     # operations is the control data for the farm; we only really care about this
     # it can have multiple stages we can iterate through them from the len(data['operations'])
     operations = data['operations']

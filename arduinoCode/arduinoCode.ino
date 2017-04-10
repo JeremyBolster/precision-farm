@@ -1,5 +1,6 @@
 #include "OneWire.h"
 #include "dht11.h"
+#include "CmdMessenger.h"
 
 #define WATER_TEMP_PIN 10
 #define LUX_PIN A0
@@ -18,12 +19,11 @@
 #define DC_3 8
 #define DC_4 9
 
-#define POLL_SYMBOL 48
-
 #define         READ_SAMPLE_TIMES            (10) //number of times to poll each sensor (if looping is required)
 #define         READ_SAMPLE_INTERVAL         (50) //wait time between sensor polling
 
 dht11 DHT11;
+CmdMessenger c = CmdMessenger(Serial,',',';','/');
 
 void setup() {
     Serial.begin(9600);
@@ -40,54 +40,53 @@ void setup() {
     pinMode(pH_PIN, INPUT);
     pinMode(CO2_DIGITAL_PIN, INPUT);
     digitalWrite(CO2_DIGITAL_PIN, HIGH);
+    attach_callbacks();  
 }
 
 void loop() {
-    delay(1000);
-//    if(Serial.available()) {
-//      delay(5000);//wait to recieve all the data we need
-//    }
-    if (Serial.available() >= 2) {
-      // read the incoming byte:
-      byte incomingByte = Serial.read();
-
-      // say what you got:
-//      Serial.print("I received: ");
-//      Serial.println(incomingByte, DEC);
-                
-      if(incomingByte == POLL_SYMBOL) {
-        Serial.println("---------Begin Sensor Data---------");
-        String waterTemp = readWaterTemp();
-        String lux = readLux();
-        String pH = readpH();
-        String airStats = readAirStats();
-        String CO2 = readCO2();
-        Serial.println(waterTemp);
-        Serial.println(lux);
-        Serial.println(pH);
-        Serial.println(airStats);
-        Serial.println(CO2);
-        Serial.println("----------End Sensor Data----------");
-        Serial.read();  //get rid of the second byte at this point
-      }
-      if(AC_1 <= incomingByte && incomingByte <= AC_4) {
-        digitalWrite(incomingByte, Serial.read());
-        Serial.println("turned on AC");
-      }
-      if(DC_1 <= incomingByte && incomingByte <= DC_4) {
-//        byte bits = Serial.read();
-//        Serial.print(bits, DEC);
-//        digitalWrite(incomingByte, Serial.read());
-        digitalWrite(incomingByte, Serial.read());
-        Serial.println("turned on DC");
-      }
-      //lets clear the buffer
-      while(Serial.available()){
-        Serial.read();
-      }
-    }
+    c.feedinSerialData();
 }
 
+/* Define available CmdMessenger commands */
+enum {
+    sensor_poll,
+    sensor_data,
+    toggle_device,
+    error,
+};
+
+void on_sensor_poll(void){
+  String waterTemp = readWaterTemp();
+  String lux = readLux();
+  String pH = readpH();
+  String airStats = readAirStats();
+  String CO2 = readCO2();
+  c.sendCmdStart(sensor_data);
+  c.sendCmdArg(waterTemp);
+  c.sendCmdArg(lux);
+  c.sendCmdArg(pH);
+  c.sendCmdArg(airStats);
+  c.sendCmdArg(CO2);
+  c.sendCmdEnd();
+}
+
+void on_toggle_device(void){
+  int pinNumber = c.readBinArg<int>();
+  bool pinSetting = c.readBinArg<bool>();
+  digitalWrite(pinNumber, pinSetting);
+}
+
+/* callback */
+void on_unknown_command(void){
+    c.sendCmd(error,"Command without callback.");
+}
+
+/* Attach callbacks for CmdMessenger commands */
+void attach_callbacks(void) { 
+    c.attach(sensor_poll,on_sensor_poll);
+    c.attach(toggle_device,on_toggle_device);
+    c.attach(on_unknown_command);
+}
 
 
 
