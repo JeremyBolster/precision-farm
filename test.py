@@ -4,6 +4,7 @@ import json
 from subprocess import call
 import datetime
 import glob
+import ArduinoMessenger
 
 pollSensorsCode = b'00'
 pollInterval = 5 #time between sensor and reaction intervals in seconds
@@ -20,6 +21,8 @@ startTime = time.time()
 
 def executeParameters(pattern):
 
+    arduinoCmds = ArduinoMessenger(arduinoSerialData)
+
     patternExecutionTime = pattern['hours'] * 60 * 60 * 1000 # hours -> minutes -> seconds -> ms
     while (startTime + patternExecutionTime) > time.time():
 
@@ -27,7 +30,8 @@ def executeParameters(pattern):
         call(["fswebcam", "-r 1280x720", imageFileName])
 
         currentTime = time.time()
-        data = pollSensors(arduinoSerialData)
+        # data = pollSensors(arduinoSerialData)
+        data = arduinoCmds.pollSensors()
         print(data)
         try:
             if(data['lux'] < pattern['light_illuminance']): #this may require toggleing
@@ -88,7 +92,7 @@ def pollSensors(arduinoSerialData):
 
 '''Read climate recipe'''
 #TODO parameterize the file we use.
-with open('general_greens.json') as data_file:    
+with open(input("Please specifie the climate recipe")) as data_file:    
     data = json.load(data_file)
     print()
     print('The current climate recipe is: '+data['_id'])
@@ -109,22 +113,3 @@ with open('general_greens.json') as data_file:
         for i in range(0, patternDays):
             print('days of cycle ' + str(currentOperation) + ' have these parameters: ' + str(day))
             print('nights of cycle ' + str(currentOperation) + ' have these parameters: ' + str(night))
-
-
-'''
----------Begin Sensor Data---------
-
-Water temp (°C): 24.56
-
-lux: 0
-
-pH value: 2.87
-
-Humidity (%): 33.00
-
-Air Temperature (°C): 24.00
-
-CO2 (ppm): -1
-
-----------End Sensor Data----------
-'''
