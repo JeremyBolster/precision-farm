@@ -27,7 +27,7 @@ class ArduinoMessenger:
 	
 	def __init__(self, arduino):
 		self.arduino = PyCmdMessenger.ArduinoBoard(arduino)
-	    self.cmd = PyCmdMessenger.CmdMessenger(self.arduino,commands)
+		self.cmd = PyCmdMessenger.CmdMessenger(self.arduino,commands)
 
 	def toggleDevice(self, device, value):
 		cmd.send(devices[device] +" "+ value)
